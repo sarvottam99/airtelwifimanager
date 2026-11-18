@@ -1,0 +1,12 @@
+Router Devices 1.1.0 update
+
+Changes:
+- Save router admin credentials automatically after a successful login, encrypted with Android Keystore.
+- Automatically reconnect when the app opens, until the user explicitly logs out.
+- After successful login, hide the login form and show the connected state with a Logout button.
+- Logout returns to the login form, retains the encrypted credentials for prefill, and disables auto-reconnect.
+- The Scan action lists only devices marked Active by the router.
+- A separate All saved devices section retains device records across scans and shows Active/Inactive tags.
+- Reuse the router session between scans instead of logging in again on each refresh.
+
+Apply this ZIP at the repository root. It contains only changed/new project files.
