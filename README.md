@@ -1,69 +1,82 @@
-# Router Devices — Airtel Nokia G-2425G-A
+# Network Scanner Airtel XStream
 
-A small, read-only Android app for retrieving the connected-device list from the local web interface of the Nokia G-2425G-A GPON router commonly supplied with Airtel Xstream Fiber.
+An independent, read-only Android companion for Airtel Xstream Fiber users with the Nokia G-2425G-A GPON router.
 
-## What it does
+It reads connected-device information directly from the router, including actual device names rather than relying on MAC vendor identification.
 
-- Connects to the router (default `http://192.168.1.1`).
-- Authenticates using the router's RSA/AES login handshake.
-- Reads `/parental_control.cgi` and parses the `deviceCfg` / `device_cfg` array.
-- Displays the router-reported hostname, IP address, MAC address, active state and interface type.
-- Filters the device list by name, IP, MAC or interface.
-- Optionally remembers the router password encrypted with an AES key held by Android Keystore.
+## Features
 
-## What it deliberately does not do
+- Router connection through the local web interface (default: 192.168.1.1).
+- RSA/AES router authentication.
+- Actual router-reported device names.
+- IP addresses and MAC addresses.
+- Connection/interface information.
+- Separate Active Devices and All Saved Devices sections.
+- Previously discovered devices retained and marked inactive when absent from later scans.
+- Search by device name, IP, MAC or interface.
+- Router session reuse during refresh.
+- Automatic login using locally saved credentials.
 
-This first version is read-only. It does not block/unblock devices, change Wi-Fi settings, edit parental controls, or send router credentials to a cloud service. Its only router requests are the login-page GET, login POST and read-only device-page GET.
+## Password storage
+
+The app prefers AES-GCM encryption using Android Keystore.
+
+If Android Keystore is unavailable, it falls back to app-private storage. This fallback is protected by Android's application sandbox but is not separately encrypted.
+
+Credentials remain on the device. They are not uploaded to a cloud service.
+
+## Read-only access
+
+The app only reads the router's device inventory. It cannot block devices, change Wi-Fi settings or modify router configuration.
+
+## Compatibility
+
+Designed for Airtel Xstream Fiber Nokia G-2425G-A routers.
+
+The implementation is based on the public project:
+https://github.com/surajnai567/airtel-router-api
+
+Firmware variations may affect compatibility.
+
+## Usage
+
+1. Connect your Android device to Airtel Xstream Fiber Wi-Fi.
+2. Open Network Scanner Airtel XStream.
+3. Enter your router IP, administrator username and password.
+4. The app saves credentials and attempts automatic login on subsequent launches.
+5. Use Scan to refresh active devices.
+6. Use All Saved Devices to see previously discovered devices and their status.
+7. Use Logout to return to the login screen.
+8. Use Forget Saved Credentials to remove locally stored credentials.
+
+The router administrator password may differ from your Wi-Fi password.
 
 ## Build
 
-Requirements: Android Studio with JDK 17 and Android SDK Platform 35. The project uses Android Gradle Plugin 8.7.3 and Gradle 8.9.
+Requirements:
+- JDK 17
+- Android SDK Platform 35
+- Android Gradle Plugin 8.7.3
+- Gradle 8.9
 
-1. Open this folder in Android Studio.
-2. Allow Gradle sync to complete.
-3. Build > Build Bundle(s) / APK(s) > Build APK(s).
+Build using:
 
-From a terminal, run `./gradlew assembleDebug` (Linux/macOS) or `gradlew.bat assembleDebug` (Windows). These bootstrap scripts download Gradle 8.9 into the user's Gradle cache; they do not need a preinstalled Gradle.
+./gradlew assembleDebug
 
-The debug APK is created at `app/build/outputs/apk/debug/app-debug.apk`.
+APK output:
 
-## Use
+app/build/outputs/apk/debug/app-debug.apk
 
-1. Connect the phone to your Airtel Xstream Fiber Wi-Fi.
-2. Open Router Devices.
-3. Enter your router web UI IP, admin username and admin password.
-4. Tap **Connect and load devices**.
-5. Optionally enable **Remember password securely on this phone**.
+## Privacy
 
-If authentication fails, confirm the same username/password work at `http://192.168.1.1` in a browser. The router's admin password is not necessarily the Wi-Fi password.
+- No analytics or advertising.
+- No telemetry.
+- No remote API.
+- Local router communication only.
+- Android backup disabled.
 
-## Compatibility note
+## Reference
 
-The protocol and page parser are based on the public [`surajnai567/airtel-router-api`](https://github.com/surajnai567/airtel-router-api) project. That project's README identifies the Nokia G-2425G-A as tested hardware and documents its encrypted login and `device_cfg` data source. Firmware customisations can change the HTML or login response, so this app must be tested against the specific Airtel firmware on the user's router. If the page layout differs, the app shows a parser/firmware error rather than inventing device data.
+https://github.com/surajnai567/airtel-router-api
 
-## Privacy and network security
-
-- Credentials stay on the phone. If saved, the password is encrypted with Android Keystore (AES-GCM); the host and username are stored as ordinary app preferences.
-- The app communicates with the router over the local network using the router's HTTP web interface. Use it only on your own trusted home network.
-- Android backup is disabled so app preferences are not included in normal device backup.
-- No analytics, advertising, remote API, or telemetry is included.
-
-## Source reference
-
-The router protocol was adapted from the public MIT-licensed project:
-
-- https://github.com/surajnai567/airtel-router-api
-- `core/client.py` — login, `GET /parental_control.cgi`, `device_cfg` parser
-- `core/crypto.py` — AES-CBC and RSA PKCS#1 v1.5 request encryption
-
-This Android project is an independent Java implementation of the read-only portion. It does not include that project's SQLite, REST server, MCP server, CLI, or device-blocking features.
-
-
-## Version 1.1.0 changes
-
-- Router admin credentials are saved after a successful login, encrypted with Android Keystore.
-- The app automatically reconnects on launch until the user explicitly logs out.
-- Explicit Logout disables automatic reconnect while keeping the encrypted credentials available for the next manual login.
-- The Scan action displays only active devices from the latest router scan.
-- All saved devices are retained locally, including devices that disappear from later scans, and shown with Active/Inactive status.
-- Router session cookies are reused across scans instead of logging in again for every refresh.
+This app independently implements the read-only router device-list functionality.
