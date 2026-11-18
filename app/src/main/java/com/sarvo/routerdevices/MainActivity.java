@@ -268,9 +268,14 @@ public final class MainActivity extends Activity {
         // This also keeps them if the router page read fails after authentication.
         String credentialSaveError = null;
         try {
-            SecureCredentials.save(this, host, username, password);
+            boolean keystoreEncrypted = SecureCredentials.save(this, host, username, password);
+            if (!keystoreEncrypted) {
+                credentialSaveError = "Android Keystore is unavailable. Password saved in this app's private storage, but not hardware-encrypted.";
+            }
         } catch (Exception saveError) {
-            credentialSaveError = "Could not save the password securely on this phone.";
+            String detail = saveError.getMessage();
+            credentialSaveError = "Could not save the password: " + saveError.getClass().getSimpleName()
+                    + (detail == null ? "" : " — " + detail);
         }
         final String credentialSaveWarning = credentialSaveError;
 
