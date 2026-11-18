@@ -57,3 +57,13 @@ The router protocol was adapted from the public MIT-licensed project:
 - `core/crypto.py` — AES-CBC and RSA PKCS#1 v1.5 request encryption
 
 This Android project is an independent Java implementation of the read-only portion. It does not include that project's SQLite, REST server, MCP server, CLI, or device-blocking features.
+
+
+## Version 1.1.0 changes
+
+- Router admin credentials are saved after a successful login, encrypted with Android Keystore.
+- The app automatically reconnects on launch until the user explicitly logs out.
+- Explicit Logout disables automatic reconnect while keeping the encrypted credentials available for the next manual login.
+- The Scan action displays only active devices from the latest router scan.
+- All saved devices are retained locally, including devices that disappear from later scans, and shown with Active/Inactive status.
+- Router session cookies are reused across scans instead of logging in again for every refresh.

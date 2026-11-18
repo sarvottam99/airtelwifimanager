@@ -67,16 +67,19 @@ final class RouterClient {
         CookieHandler.setDefault(cookieManager);
     }
 
+    /** Reuses the authenticated router session for later scans. */
     List<RouterDevice> connectAndReadDevices() throws Exception {
-        authenticated = false;
-        cookieManager.getCookieStore().removeAll();
-        String loginPage = get("/");
-        LoginParams params = parseLoginParams(loginPage);
-        login(params);
+        if (!authenticated) {
+            cookieManager.getCookieStore().removeAll();
+            String loginPage = get("/");
+            LoginParams params = parseLoginParams(loginPage);
+            login(params);
+        }
 
         String html = get("/parental_control.cgi");
         if (looksLikeLoginPage(html)) {
             authenticated = false;
+            cookieManager.getCookieStore().removeAll();
             LoginParams retryParams = parseLoginParams(html);
             login(retryParams);
             html = get("/parental_control.cgi");
@@ -87,6 +90,23 @@ final class RouterClient {
                     + "The Airtel firmware may use a different page format.");
         }
         return devices;
+    }
+
+    /** Ends the router web session and clears local cookies. */
+    void logout() {
+        try {
+            if (authenticated) {
+                HttpURLConnection connection = open("/login.cgi?out", "GET");
+                int status = connection.getResponseCode();
+                readResponse(connection, status);
+                connection.disconnect();
+            }
+        } catch (Exception ignored) {
+            // Local logout must complete even if the router cannot be reached.
+        } finally {
+            authenticated = false;
+            cookieManager.getCookieStore().removeAll();
+        }
     }
 
     private void login(LoginParams params) throws Exception {

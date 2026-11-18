@@ -20,7 +20,9 @@ final class SecureCredentials {
     private static final String KEY_ALIAS = "router_devices_credentials_v1";
     private static final String PASSWORD_IV = "password_iv";
     private static final String PASSWORD_DATA = "password_data";
+    private static final String AUTO_LOGIN = "auto_login";
 
+    /** Called only after a successful router login. Also enables automatic reconnect. */
     static void save(Context context, String host, String username, String password) throws Exception {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         byte[] iv = new byte[12];
@@ -33,6 +35,7 @@ final class SecureCredentials {
                 .putString("username", username)
                 .putString(PASSWORD_IV, Base64.encodeToString(iv, Base64.NO_WRAP))
                 .putString(PASSWORD_DATA, Base64.encodeToString(encrypted, Base64.NO_WRAP))
+                .putBoolean(AUTO_LOGIN, true)
                 .apply();
     }
 
@@ -40,21 +43,29 @@ final class SecureCredentials {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String host = prefs.getString("host", "192.168.1.1");
         String username = prefs.getString("username", "admin");
+        boolean autoLogin = prefs.getBoolean(AUTO_LOGIN, false);
         String ivText = prefs.getString(PASSWORD_IV, null);
         String dataText = prefs.getString(PASSWORD_DATA, null);
-        if (ivText == null || dataText == null) return new Saved(host, username, null);
+        if (ivText == null || dataText == null) {
+            return new Saved(host, username, null, false);
+        }
         try {
             byte[] iv = Base64.decode(ivText, Base64.DEFAULT);
             byte[] data = Base64.decode(dataText, Base64.DEFAULT);
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), new GCMParameterSpec(128, iv));
             String password = new String(cipher.doFinal(data), StandardCharsets.UTF_8);
-            return new Saved(host, username, password);
+            return new Saved(host, username, password, autoLogin);
         } catch (Exception e) {
-            // Reinstallation, keystore reset or corrupted data: forget the unreadable secret.
             forget(context);
-            return new Saved(host, username, null);
+            return new Saved(host, username, null, false);
         }
+    }
+
+    /** Prevents automatic reconnect after explicit Logout, but keeps the credentials prefilled. */
+    static void setAutoLogin(Context context, boolean enabled) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(AUTO_LOGIN, enabled).apply();
     }
 
     static void forget(Context context) {
@@ -82,10 +93,13 @@ final class SecureCredentials {
         final String host;
         final String username;
         final String password;
-        Saved(String host, String username, String password) {
+        final boolean autoLogin;
+
+        Saved(String host, String username, String password, boolean autoLogin) {
             this.host = host;
             this.username = username;
             this.password = password;
+            this.autoLogin = autoLogin;
         }
     }
 

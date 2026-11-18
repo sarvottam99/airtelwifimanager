@@ -5,13 +5,14 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -35,25 +36,32 @@ public final class MainActivity extends Activity {
     private static final int RED = Color.rgb(255, 135, 135);
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final List<RouterDevice> currentDevices = new ArrayList<>();
+    private List<RouterDevice> savedDevices = new ArrayList<>();
 
     private EditText hostField;
     private EditText usernameField;
     private EditText passwordField;
     private EditText searchField;
-    private CheckBox rememberCheck;
-    private Button connectButton;
-    private Button refreshButton;
-    private Button forgetButton;
-    private ProgressBar progressBar;
-    private TextView statusText;
-    private TextView summaryText;
-    private LinearLayout devicesContainer;
+    private Button loginButton;
+    private Button logoutButton;
+    private Button scanButton;
+    private ProgressBar loginProgress;
+    private ProgressBar scanProgress;
+    private TextView loginStatus;
+    private TextView activeSummary;
+    private TextView savedSummary;
+    private LinearLayout connectionContent;
+    private LinearLayout activeDevicesContainer;
+    private LinearLayout savedDevicesContainer;
 
+    private RouterClient routerClient;
     private String activeHost = "192.168.1.1";
     private String activeUsername = "admin";
     private String activePassword = "";
+    private boolean connected = false;
+    private boolean scanning = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,8 +69,25 @@ public final class MainActivity extends Activity {
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
         getWindow().getDecorView().setSystemUiVisibility(0);
+
         buildUi();
-        loadSavedCredentials();
+        savedDevices = SavedDevicesStore.load(this);
+        renderDevices();
+
+        SecureCredentials.Saved saved = SecureCredentials.load(this);
+        activeHost = saved.host == null ? "192.168.1.1" : saved.host;
+        activeUsername = saved.username == null ? "admin" : saved.username;
+        activePassword = saved.password == null ? "" : saved.password;
+
+        if (saved.password != null && saved.autoLogin) {
+            showConnectingPanel("Reconnecting to your router…");
+            startLogin(activeHost, activeUsername, activePassword, true);
+        } else {
+            showLoginPanel(activeHost, activeUsername, activePassword,
+                    saved.password == null
+                            ? "Enter your router admin credentials."
+                            : "Credentials saved securely. Tap Login to connect.");
+        }
     }
 
     private void buildUi() {
@@ -86,51 +111,34 @@ public final class MainActivity extends Activity {
         connectionTitle.setLetterSpacing(0.08f);
         connectionCard.addView(connectionTitle, matchWrap());
 
-        hostField = input("Router IP", "192.168.1.1", false);
-        usernameField = input("Admin username", "admin", false);
-        passwordField = input("Admin password", "", true);
-        connectionCard.addView(hostField, fieldParams());
-        connectionCard.addView(usernameField, fieldParams());
-        connectionCard.addView(passwordField, fieldParams());
+        connectionContent = new LinearLayout(this);
+        connectionContent.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout connectionContentParams = matchWrap();
+        connectionContentParams.topMargin = dp(4);
+        connectionCard.addView(connectionContent, connectionContentParams);
 
-        rememberCheck = new CheckBox(this);
-        rememberCheck.setText("Remember password securely on this phone");
-        rememberCheck.setTextColor(MUTED);
-        rememberCheck.setTextSize(13);
-        rememberCheck.setButtonTintList(android.content.res.ColorStateList.valueOf(ACCENT));
-        rememberCheck.setPadding(0, dp(2), 0, dp(5));
-        connectionCard.addView(rememberCheck, matchWrap());
+        LinearLayout activeHeader = new LinearLayout(this);
+        activeHeader.setGravity(Gravity.CENTER_VERTICAL);
+        activeHeader.setOrientation(LinearLayout.HORIZONTAL);
+        activeHeader.setPadding(0, dp(22), 0, dp(8));
+        page.addView(activeHeader, matchWrap());
+        TextView activeTitle = text("Active devices", 20, TEXT, true);
+        activeHeader.addView(activeTitle, new LinearLayout.LayoutParams(0, -2, 1));
+        scanButton = button("Scan", false);
+        scanButton.setTextSize(13);
+        scanButton.setOnClickListener(v -> scanNetwork());
+        activeHeader.addView(scanButton, new LinearLayout.LayoutParams(-2, dp(42)));
 
-        connectButton = button("Connect and load devices", true);
-        connectionCard.addView(connectButton, buttonParams());
-        connectButton.setOnClickListener(v -> connect(false));
+        activeSummary = text("No scan performed yet", 13, MUTED, false);
+        page.addView(activeSummary, matchWrap());
 
-        progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        progressBar.setIndeterminate(true);
-        progressBar.setVisibility(View.GONE);
-        progressBar.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(ACCENT));
-        LinearLayout.LayoutParams progressParams = matchWrap();
-        progressParams.topMargin = dp(12);
-        connectionCard.addView(progressBar, progressParams);
-
-        statusText = text("Not connected. Join your Airtel Wi-Fi, then connect to the router.", 13, MUTED, false);
-        statusText.setPadding(0, dp(10), 0, 0);
-        connectionCard.addView(statusText, matchWrap());
-
-        LinearLayout listHeader = new LinearLayout(this);
-        listHeader.setGravity(Gravity.CENTER_VERTICAL);
-        listHeader.setOrientation(LinearLayout.HORIZONTAL);
-        listHeader.setPadding(0, dp(22), 0, dp(10));
-        page.addView(listHeader, matchWrap());
-        TextView sectionTitle = text("Connected devices", 20, TEXT, true);
-        listHeader.addView(sectionTitle, new LinearLayout.LayoutParams(0, -2, 1));
-        refreshButton = button("Refresh", false);
-        refreshButton.setTextSize(13);
-        refreshButton.setOnClickListener(v -> connect(true));
-        listHeader.addView(refreshButton, new LinearLayout.LayoutParams(-2, dp(42)));
-
-        summaryText = text("No device list loaded yet", 13, MUTED, false);
-        page.addView(summaryText, matchWrap());
+        scanProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        scanProgress.setIndeterminate(true);
+        scanProgress.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(ACCENT));
+        scanProgress.setVisibility(View.GONE);
+        LinearLayout.LayoutParams scanProgressParams = matchWrap();
+        scanProgressParams.topMargin = dp(8);
+        page.addView(scanProgress, scanProgressParams);
 
         searchField = input("Search name, IP, MAC or interface", "", false);
         LinearLayout.LayoutParams searchParams = fieldParams();
@@ -142,112 +150,298 @@ public final class MainActivity extends Activity {
             @Override public void afterTextChanged(Editable s) {}
         });
 
-        devicesContainer = new LinearLayout(this);
-        devicesContainer.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams deviceParams = matchWrap();
-        deviceParams.topMargin = dp(8);
-        page.addView(devicesContainer, deviceParams);
+        activeDevicesContainer = new LinearLayout(this);
+        activeDevicesContainer.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams activeParams = matchWrap();
+        activeParams.topMargin = dp(8);
+        page.addView(activeDevicesContainer, activeParams);
 
-        forgetButton = button("Forget saved router credentials", false);
-        forgetButton.setTextColor(MUTED);
-        LinearLayout.LayoutParams forgetParams = buttonParams();
-        forgetParams.topMargin = dp(18);
-        page.addView(forgetButton, forgetParams);
-        forgetButton.setOnClickListener(v -> forgetCredentials());
+        LinearLayout savedHeader = new LinearLayout(this);
+        savedHeader.setOrientation(LinearLayout.HORIZONTAL);
+        savedHeader.setGravity(Gravity.CENTER_VERTICAL);
+        savedHeader.setPadding(0, dp(22), 0, dp(8));
+        page.addView(savedHeader, matchWrap());
+        TextView savedTitle = text("All saved devices", 20, TEXT, true);
+        savedHeader.addView(savedTitle, new LinearLayout.LayoutParams(0, -2, 1));
+        savedSummary = text("No saved devices yet", 13, MUTED, false);
+        page.addView(savedSummary, matchWrap());
+
+        savedDevicesContainer = new LinearLayout(this);
+        savedDevicesContainer.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams savedParams = matchWrap();
+        savedParams.topMargin = dp(8);
+        page.addView(savedDevicesContainer, savedParams);
 
         TextView note = text("Read-only access. This app only reads the router's device list; it cannot block devices or change Wi-Fi settings.", 12, MUTED, false);
-        note.setPadding(dp(4), dp(16), dp(4), 0);
+        note.setPadding(dp(4), dp(18), dp(4), 0);
         page.addView(note, matchWrap());
 
         setContentView(scroll);
     }
 
-    private void loadSavedCredentials() {
+    private void showLoginPanel(String host, String username, String password, String message) {
+        connectionContent.removeAllViews();
+        hostField = input("Router IP", host == null ? "192.168.1.1" : host, false);
+        usernameField = input("Admin username", username == null ? "admin" : username, false);
+        passwordField = input("Admin password", password == null ? "" : password, true);
+        connectionContent.addView(hostField, fieldParams());
+        connectionContent.addView(usernameField, fieldParams());
+        connectionContent.addView(passwordField, fieldParams());
+
+        loginButton = button("Login and load devices", true);
+        connectionContent.addView(loginButton, buttonParams());
+        loginButton.setOnClickListener(v -> {
+            String h = hostField.getText().toString().trim();
+            String u = usernameField.getText().toString().trim();
+            String p = passwordField.getText().toString();
+            if (h.isEmpty() || u.isEmpty() || p.isEmpty()) {
+                loadLoginPanelAfterError(h, u, p, "Enter the router IP, admin username and password.");
+                return;
+            }
+            startLogin(h, u, p, false);
+        });
+
+        loginProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        loginProgress.setIndeterminate(true);
+        loginProgress.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(ACCENT));
+        loginProgress.setVisibility(View.GONE);
+        LinearLayout.LayoutParams progressParams = matchWrap();
+        progressParams.topMargin = dp(12);
+        connectionContent.addView(loginProgress, progressParams);
+
+        loginStatus = text(message == null ? "" : message, 13, MUTED, false);
+        loginStatus.setPadding(0, dp(10), 0, 0);
+        connectionContent.addView(loginStatus, matchWrap());
+
         SecureCredentials.Saved saved = SecureCredentials.load(this);
-        hostField.setText(saved.host == null ? "192.168.1.1" : saved.host);
-        usernameField.setText(saved.username == null ? "admin" : saved.username);
         if (saved.password != null) {
-            passwordField.setText(saved.password);
-            rememberCheck.setChecked(true);
-            statusText.setText("Saved credentials found. Tap Connect and load devices.");
+            Button forget = button("Forget saved credentials", false);
+            forget.setTextSize(12);
+            LinearLayout.LayoutParams forgetParams = buttonParams();
+            forgetParams.topMargin = dp(8);
+            connectionContent.addView(forget, forgetParams);
+            forget.setOnClickListener(v -> {
+                SecureCredentials.forget(this);
+                activePassword = "";
+                showLoginPanel("192.168.1.1", "admin", "", "Saved router credentials removed.");
+                Toast.makeText(this, "Saved credentials forgotten", Toast.LENGTH_SHORT).show();
+            });
         }
+        updateScanButton();
     }
 
-    private void connect(boolean refresh) {
-        final String host = hostField.getText().toString().trim();
-        final String username = usernameField.getText().toString().trim();
-        final String password = passwordField.getText().toString();
-        if (host.isEmpty() || username.isEmpty() || password.isEmpty()) {
-            setStatus("Enter the router IP, admin username and password.", RED);
-            return;
-        }
-        if (rememberCheck.isChecked()) {
-            try {
-                SecureCredentials.save(this, host, username, password);
-            } catch (Exception e) {
-                setStatus("Could not securely save the password: " + safeMessage(e), RED);
-            }
-        } else {
-            SecureCredentials.forget(this);
-        }
+    private void showConnectingPanel(String message) {
+        connectionContent.removeAllViews();
+        ProgressBar progress = new ProgressBar(this);
+        progress.setIndeterminate(true);
+        progress.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(ACCENT));
+        connectionContent.addView(progress, new LinearLayout.LayoutParams(-2, dp(34)));
+        TextView status = text(message, 13, MUTED, false);
+        status.setPadding(0, dp(8), 0, 0);
+        connectionContent.addView(status, matchWrap());
+        updateScanButton();
+    }
 
+    private void showSessionPanel() {
+        connectionContent.removeAllViews();
+        TextView status = text("Connected to " + activeHost, 13, GREEN, false);
+        status.setPadding(0, dp(8), 0, dp(2));
+        connectionContent.addView(status, matchWrap());
+
+        logoutButton = button("Logout", false);
+        connectionContent.addView(logoutButton, buttonParams());
+        logoutButton.setOnClickListener(v -> logout());
+        updateScanButton();
+    }
+
+    private void loadLoginPanelAfterError(String host, String username, String password, String error) {
+        showLoginPanel(host, username, password, error);
+        if (loginStatus != null) loginStatus.setTextColor(RED);
+    }
+
+    private void startLogin(String host, String username, String password, boolean automatic) {
         activeHost = host;
         activeUsername = username;
         activePassword = password;
-        setBusy(true, refresh ? "Refreshing the router's device list…" : "Connecting to the router…");
+
+        if (!automatic && loginButton != null) {
+            loginButton.setEnabled(false);
+            loginButton.setText("Connecting…");
+            if (loginProgress != null) loginProgress.setVisibility(View.VISIBLE);
+            if (loginStatus != null) {
+                loginStatus.setText("Connecting to the router…");
+                loginStatus.setTextColor(MUTED);
+            }
+        } else if (automatic) {
+            showConnectingPanel("Reconnecting to " + host + "…");
+        }
+        updateScanButton();
 
         executor.execute(() -> {
+            RouterClient client = new RouterClient(host, username, password);
             try {
-                RouterClient client = new RouterClient(host, username, password);
                 List<RouterDevice> devices = client.connectAndReadDevices();
+                String saveWarning = null;
+                try {
+                    // Credentials are always saved after a successful login, encrypted with Android Keystore.
+                    SecureCredentials.save(this, host, username, password);
+                } catch (Exception saveError) {
+                    saveWarning = "Could not save the password securely on this phone.";
+                }
+                List<RouterDevice> merged = SavedDevicesStore.merge(this, devices);
+                final String warning = saveWarning;
                 mainHandler.post(() -> {
+                    routerClient = client;
+                    connected = true;
                     currentDevices.clear();
                     currentDevices.addAll(devices);
-                    summaryText.setText(makeSummary(devices));
-                    setStatus("Connected to " + host + " · device list loaded successfully.", GREEN);
-                    setBusy(false, null);
+                    savedDevices = merged;
+                    showSessionPanel();
+                    if (warning != null) {
+                        Toast.makeText(this, warning, Toast.LENGTH_LONG).show();
+                    }
+                    updateSummaries();
                     renderDevices();
+                    updateScanButton();
                 });
             } catch (Exception e) {
+                client.logout();
                 mainHandler.post(() -> {
-                    setBusy(false, null);
-                    setStatus(safeMessage(e), RED);
-                    if (currentDevices.isEmpty()) {
-                        summaryText.setText("No device list loaded");
-                        renderDevices();
-                    }
+                    connected = false;
+                    routerClient = null;
+                    loadLoginPanelAfterError(host, username, password, safeMessage(e));
+                    updateScanButton();
                 });
             }
         });
     }
 
-    private String makeSummary(List<RouterDevice> devices) {
-        int online = 0;
-        for (RouterDevice device : devices) if (device.active) online++;
-        return devices.size() + " router records  ·  " + online + " active  ·  " + (devices.size() - online) + " inactive";
+    private void scanNetwork() {
+        if (!connected || routerClient == null || scanning) return;
+        scanning = true;
+        scanButton.setEnabled(false);
+        scanButton.setText("Scanning…");
+        scanProgress.setVisibility(View.VISIBLE);
+
+        RouterClient client = routerClient;
+        executor.execute(() -> {
+            try {
+                List<RouterDevice> devices = client.connectAndReadDevices();
+                List<RouterDevice> merged = SavedDevicesStore.merge(this, devices);
+                mainHandler.post(() -> {
+                    currentDevices.clear();
+                    currentDevices.addAll(devices);
+                    savedDevices = merged;
+                    scanning = false;
+                    scanProgress.setVisibility(View.GONE);
+                    scanButton.setText("Scan");
+                    scanButton.setEnabled(true);
+                    updateSummaries();
+                    renderDevices();
+                });
+            } catch (Exception e) {
+                mainHandler.post(() -> {
+                    scanning = false;
+                    scanProgress.setVisibility(View.GONE);
+                    scanButton.setText("Scan");
+                    scanButton.setEnabled(true);
+                    Toast.makeText(this, safeMessage(e), Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    private void logout() {
+        // Explicit Logout disables automatic reconnect; encrypted credentials remain prefilled for next login.
+        SecureCredentials.setAutoLogin(this, false);
+        RouterClient oldClient = routerClient;
+        routerClient = null;
+        connected = false;
+        scanning = false;
+        currentDevices.clear();
+        renderDevices();
+
+        SecureCredentials.Saved saved = SecureCredentials.load(this);
+        String host = saved.host == null ? "192.168.1.1" : saved.host;
+        String username = saved.username == null ? "admin" : saved.username;
+        String password = saved.password == null ? "" : saved.password;
+        showLoginPanel(host, username, password, "Logged out. Your credentials remain saved securely on this phone.");
+        updateScanButton();
+
+        executor.execute(() -> {
+            if (oldClient != null) oldClient.logout();
+        });
+    }
+
+    private String safeMessage(Exception e) {
+        String message = e.getMessage();
+        if (message == null || message.trim().isEmpty()) {
+            return "Could not communicate with the router. Check Wi-Fi and credentials.";
+        }
+        if (message.contains("CLEARTEXT communication") || message.contains("cleartext")) {
+            return "Android blocked the local HTTP connection. Confirm this build's network security setting.";
+        }
+        if (message.contains("Failed to connect") || message.contains("Unable to resolve host")) {
+            return "Cannot reach the router. Connect to your Airtel Wi-Fi and check the router IP.";
+        }
+        return message;
+    }
+
+    private void updateSummaries() {
+        int active = 0;
+        for (RouterDevice device : currentDevices) if (device.active) active++;
+        int inactive = 0;
+        for (RouterDevice device : savedDevices) if (!device.active) inactive++;
+        activeSummary.setText(active + " active devices in the latest scan");
+        savedSummary.setText(savedDevices.size() + " saved records  ·  " + active + " active  ·  " + inactive + " inactive");
+    }
+
+    private void updateScanButton() {
+        if (scanButton == null) return;
+        scanButton.setEnabled(connected && !scanning);
+        if (!scanning) scanButton.setText("Scan");
     }
 
     private void renderDevices() {
-        if (devicesContainer == null) return;
-        devicesContainer.removeAllViews();
+        if (activeDevicesContainer == null || savedDevicesContainer == null) return;
         String query = searchField == null ? "" : searchField.getText().toString();
-        int count = 0;
+
+        activeDevicesContainer.removeAllViews();
+        int activeCount = 0;
         for (RouterDevice device : currentDevices) {
+            if (!device.active || !device.matches(query)) continue;
+            activeCount++;
+            activeDevicesContainer.addView(deviceCard(device, false), matchWrapWithBottom(dp(10)));
+        }
+        if (activeCount == 0) {
+            addEmpty(activeDevicesContainer, currentDevices.isEmpty()
+                    ? "Log in and scan the router to see currently active devices."
+                    : "No active devices match your search.");
+        }
+
+        savedDevicesContainer.removeAllViews();
+        int savedCount = 0;
+        for (RouterDevice device : savedDevices) {
             if (!device.matches(query)) continue;
-            count++;
-            devicesContainer.addView(deviceCard(device), matchWrapWithBottom(dp(10)));
+            savedCount++;
+            savedDevicesContainer.addView(deviceCard(device, true), matchWrapWithBottom(dp(10)));
         }
-        if (count == 0) {
-            TextView empty = text(currentDevices.isEmpty()
-                    ? "Connect to the router to retrieve its device names."
-                    : "No devices match your search.", 14, MUTED, false);
-            empty.setGravity(Gravity.CENTER);
-            empty.setPadding(dp(18), dp(28), dp(18), dp(28));
-            devicesContainer.addView(empty, matchWrap());
+        if (savedCount == 0) {
+            addEmpty(savedDevicesContainer, savedDevices.isEmpty()
+                    ? "Devices will be saved here after the first successful scan."
+                    : "No saved devices match your search.");
         }
+        updateSummaries();
     }
 
-    private View deviceCard(RouterDevice device) {
+    private void addEmpty(LinearLayout parent, String message) {
+        TextView empty = text(message, 14, MUTED, false);
+        empty.setGravity(Gravity.CENTER);
+        empty.setPadding(dp(18), dp(24), dp(18), dp(24));
+        parent.addView(empty, matchWrap());
+    }
+
+    private View deviceCard(RouterDevice device, boolean showStatus) {
         LinearLayout outer = card();
         outer.setPadding(dp(16), dp(15), dp(16), dp(15));
 
@@ -261,11 +455,13 @@ public final class MainActivity extends Activity {
         name.setEllipsize(android.text.TextUtils.TruncateAt.END);
         top.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
 
-        TextView state = text(device.active ? "ACTIVE" : "INACTIVE", 10,
-                device.active ? GREEN : MUTED, true);
-        state.setPadding(dp(9), dp(5), dp(9), dp(5));
-        state.setBackground(pill(device.active ? Color.rgb(28, 66, 57) : Color.rgb(48, 57, 65)));
-        top.addView(state, new LinearLayout.LayoutParams(-2, -2));
+        if (showStatus) {
+            TextView state = text(device.active ? "ACTIVE" : "INACTIVE", 10,
+                    device.active ? GREEN : MUTED, true);
+            state.setPadding(dp(9), dp(5), dp(9), dp(5));
+            state.setBackground(pill(device.active ? Color.rgb(28, 66, 57) : Color.rgb(48, 57, 65)));
+            top.addView(state, new LinearLayout.LayoutParams(-2, -2));
+        }
 
         addDetail(outer, "IP", device.ip.isEmpty() ? "Not reported" : device.ip);
         addDetail(outer, "MAC", device.mac.isEmpty() ? "Not reported" : device.mac);
@@ -285,40 +481,6 @@ public final class MainActivity extends Activity {
         content.setMaxLines(2);
         content.setEllipsize(android.text.TextUtils.TruncateAt.END);
         row.addView(content, new LinearLayout.LayoutParams(0, -2, 1));
-    }
-
-    private void forgetCredentials() {
-        SecureCredentials.forget(this);
-        passwordField.setText("");
-        rememberCheck.setChecked(false);
-        activePassword = "";
-        setStatus("Saved router credentials removed from this app.", MUTED);
-        Toast.makeText(this, "Saved credentials forgotten", Toast.LENGTH_SHORT).show();
-    }
-
-    private void setBusy(boolean busy, String message) {
-        connectButton.setEnabled(!busy);
-        refreshButton.setEnabled(!busy && !currentDevices.isEmpty());
-        progressBar.setVisibility(busy ? View.VISIBLE : View.GONE);
-        connectButton.setText(busy ? "Please wait…" : "Connect and load devices");
-        if (message != null) setStatus(message, MUTED);
-    }
-
-    private void setStatus(String message, int color) {
-        statusText.setText(message);
-        statusText.setTextColor(color);
-    }
-
-    private String safeMessage(Exception e) {
-        String message = e.getMessage();
-        if (message == null || message.trim().isEmpty()) return "Could not communicate with the router. Check Wi-Fi and credentials.";
-        if (message.contains("CLEARTEXT communication") || message.contains("cleartext")) {
-            return "Android blocked the local HTTP connection. Confirm this build's network security setting.";
-        }
-        if (message.contains("Failed to connect") || message.contains("Unable to resolve host")) {
-            return "Cannot reach the router. Connect to your Airtel Wi-Fi and check the router IP.";
-        }
-        return message;
     }
 
     private LinearLayout card() {

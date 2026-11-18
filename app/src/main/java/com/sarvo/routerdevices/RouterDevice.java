@@ -25,6 +25,17 @@ final class RouterDevice {
         return hostname.isEmpty() ? "Unnamed device" : hostname;
     }
 
+    /** Stable key for the local saved-device list. */
+    String identityKey() {
+        if (!mac.isEmpty()) return "mac:" + mac.toLowerCase(java.util.Locale.ROOT);
+        if (!ip.isEmpty()) return "ip:" + ip + "|" + hostname.toLowerCase(java.util.Locale.ROOT);
+        return "name:" + hostname.toLowerCase(java.util.Locale.ROOT);
+    }
+
+    RouterDevice withActive(boolean value) {
+        return new RouterDevice(oid, hostname, ip, mac, value, interfaceType);
+    }
+
     boolean matches(String query) {
         if (query == null || query.trim().isEmpty()) return true;
         String q = query.trim().toLowerCase(java.util.Locale.ROOT);
