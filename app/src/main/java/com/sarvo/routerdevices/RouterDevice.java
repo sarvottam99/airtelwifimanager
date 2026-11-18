@@ -1,0 +1,36 @@
+package com.sarvo.routerdevices;
+
+final class RouterDevice {
+    final int oid;
+    final String hostname;
+    final String ip;
+    final String mac;
+    final boolean active;
+    final String interfaceType;
+
+    RouterDevice(int oid, String hostname, String ip, String mac, boolean active, String interfaceType) {
+        this.oid = oid;
+        this.hostname = clean(hostname);
+        this.ip = clean(ip);
+        this.mac = clean(mac);
+        this.active = active;
+        this.interfaceType = clean(interfaceType);
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    String displayName() {
+        return hostname.isEmpty() ? "Unnamed device" : hostname;
+    }
+
+    boolean matches(String query) {
+        if (query == null || query.trim().isEmpty()) return true;
+        String q = query.trim().toLowerCase(java.util.Locale.ROOT);
+        return hostname.toLowerCase(java.util.Locale.ROOT).contains(q)
+                || ip.toLowerCase(java.util.Locale.ROOT).contains(q)
+                || mac.toLowerCase(java.util.Locale.ROOT).contains(q)
+                || interfaceType.toLowerCase(java.util.Locale.ROOT).contains(q);
+    }
+}
