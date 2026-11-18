@@ -113,7 +113,7 @@ public final class MainActivity extends Activity {
 
         connectionContent = new LinearLayout(this);
         connectionContent.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout connectionContentParams = matchWrap();
+        LinearLayout.LayoutParams connectionContentParams = matchWrap();
         connectionContentParams.topMargin = dp(4);
         connectionCard.addView(connectionContent, connectionContentParams);
 
