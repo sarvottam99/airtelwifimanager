@@ -7,14 +7,21 @@ final class RouterDevice {
     final String mac;
     final boolean active;
     final String interfaceType;
+    final boolean blocked;
 
     RouterDevice(int oid, String hostname, String ip, String mac, boolean active, String interfaceType) {
+        this(oid, hostname, ip, mac, active, interfaceType, false);
+    }
+
+    RouterDevice(int oid, String hostname, String ip, String mac, boolean active,
+                 String interfaceType, boolean blocked) {
         this.oid = oid;
         this.hostname = clean(hostname);
         this.ip = clean(ip);
         this.mac = clean(mac);
         this.active = active;
         this.interfaceType = clean(interfaceType);
+        this.blocked = blocked;
     }
 
     private static String clean(String value) {
@@ -33,7 +40,11 @@ final class RouterDevice {
     }
 
     RouterDevice withActive(boolean value) {
-        return new RouterDevice(oid, hostname, ip, mac, value, interfaceType);
+        return new RouterDevice(oid, hostname, ip, mac, value, interfaceType, blocked);
+    }
+
+    RouterDevice withBlocked(boolean value) {
+        return new RouterDevice(oid, hostname, ip, mac, active, interfaceType, value);
     }
 
     boolean matches(String query) {

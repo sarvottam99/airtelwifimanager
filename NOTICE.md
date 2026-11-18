@@ -1,8 +1,27 @@
-# Protocol attribution
+# Third-party protocol attribution
 
-Router login and device-list compatibility in this app were implemented by studying the public MIT-licensed project:
-https://github.com/surajnai567/airtel-router-api
+The Nokia G-2425G-A login and Parental Control request flow in this application is based on the protocol documented by [surajnai567/airtel-router-api](https://github.com/surajnai567/airtel-router-api). The Android implementation is a Java port/adaptation for this application.
 
-The reference project documents the Nokia G-2425G-A router, RSA/AES login handshake, and the `device_cfg` JavaScript array exposed by `/parental_control.cgi`.
+Upstream project license:
 
-This project is an independent, read-only Android implementation. No code from the reference project's Python files is bundled here.
+MIT License
+
+Copyright (c) 2026 Suraj
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

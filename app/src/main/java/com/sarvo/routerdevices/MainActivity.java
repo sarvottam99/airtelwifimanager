@@ -1,6 +1,7 @@
 package com.sarvo.routerdevices;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -62,6 +63,7 @@ public final class MainActivity extends Activity {
     private String activePassword = "";
     private boolean connected = false;
     private boolean scanning = false;
+    private boolean deviceActionRunning = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -172,7 +174,7 @@ public final class MainActivity extends Activity {
         savedParams.topMargin = dp(8);
         page.addView(savedDevicesContainer, savedParams);
 
-        TextView note = text("Read-only access. This app only reads the router's device list; it cannot block devices or change Wi-Fi settings.", 12, MUTED, false);
+        TextView note = text("Block and unblock controls change internet access through the router's Parental Control. A blocked device may remain connected to Wi-Fi. Do not block the phone running this app.", 12, MUTED, false);
         note.setPadding(dp(4), dp(18), dp(4), 0);
         page.addView(note, matchWrap());
 
@@ -357,6 +359,65 @@ public final class MainActivity extends Activity {
         });
     }
 
+
+    private void confirmDeviceAction(RouterDevice device) {
+        if (!connected || routerClient == null || deviceActionRunning || scanning) return;
+        if (device.mac == null || !device.mac.matches("(?i)[0-9a-f]{2}([:-][0-9a-f]{2}){5}")) {
+            Toast.makeText(this, "This device has no valid MAC address; router blocking is unavailable.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        boolean block = !device.blocked;
+        String title = block ? "Block internet access?" : "Unblock device?";
+        String message = block
+                ? "This will restrict this device's internet access using the router's Parental Control. It may stay connected to Wi-Fi. Do not block the phone running this app, or you may lose access to the router. Continue?"
+                : "This will restore this device to the router's Home group and allow internet access again. Continue?";
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton(block ? "Block" : "Unblock", (dialog, which) -> changeDeviceAccess(device, block))
+                .show();
+    }
+
+    private void changeDeviceAccess(RouterDevice device, boolean block) {
+        if (!connected || routerClient == null || deviceActionRunning || scanning) return;
+        RouterClient client = routerClient;
+        deviceActionRunning = true;
+        updateScanButton();
+        renderDevices();
+
+        executor.execute(() -> {
+            List<RouterDevice> refreshed = null;
+            List<RouterDevice> merged = null;
+            Exception failure = null;
+            try {
+                boolean changed = block ? client.blockDevice(device.mac) : client.unblockDevice(device.mac);
+                if (!changed) throw new java.io.IOException("The router did not confirm the requested change.");
+                refreshed = client.connectAndReadDevices();
+                merged = SavedDevicesStore.merge(this, refreshed);
+                merged = SavedDevicesStore.updateBlocked(this, device.mac, block);
+            } catch (Exception e) {
+                failure = e;
+            }
+            final List<RouterDevice> finalRefreshed = refreshed;
+            final List<RouterDevice> finalMerged = merged;
+            final Exception finalFailure = failure;
+            mainHandler.post(() -> {
+                deviceActionRunning = false;
+                if (finalFailure == null) {
+                    currentDevices.clear();
+                    currentDevices.addAll(finalRefreshed);
+                    savedDevices = finalMerged;
+                    Toast.makeText(this, block ? "Device blocked by the router." : "Device unblocked by the router.", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Could not " + (block ? "block" : "unblock") + " device: " + safeMessage(finalFailure), Toast.LENGTH_LONG).show();
+                }
+                updateScanButton();
+                renderDevices();
+            });
+        });
+    }
+
     private void logout() {
         // Logout ends this in-app session. Saved credentials are retained, and the next app launch auto-connects.
         RouterClient oldClient = routerClient;
@@ -403,7 +464,7 @@ public final class MainActivity extends Activity {
 
     private void updateScanButton() {
         if (scanButton == null) return;
-        scanButton.setEnabled(connected && !scanning);
+        scanButton.setEnabled(connected && !scanning && !deviceActionRunning);
         if (!scanning) scanButton.setText("Scan");
     }
 
@@ -460,7 +521,12 @@ public final class MainActivity extends Activity {
         name.setEllipsize(android.text.TextUtils.TruncateAt.END);
         top.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
 
-        if (showStatus) {
+        if (device.blocked) {
+            TextView state = text("BLOCKED", 10, RED, true);
+            state.setPadding(dp(9), dp(5), dp(9), dp(5));
+            state.setBackground(pill(Color.rgb(74, 38, 43)));
+            top.addView(state, new LinearLayout.LayoutParams(-2, -2));
+        } else if (showStatus) {
             TextView state = text(device.active ? "ACTIVE" : "INACTIVE", 10,
                     device.active ? GREEN : MUTED, true);
             state.setPadding(dp(9), dp(5), dp(9), dp(5));
@@ -471,6 +537,16 @@ public final class MainActivity extends Activity {
         addDetail(outer, "IP", device.ip.isEmpty() ? "Not reported" : device.ip);
         addDetail(outer, "MAC", device.mac.isEmpty() ? "Not reported" : device.mac);
         addDetail(outer, "CONNECTION", device.interfaceType.isEmpty() ? "Not reported" : device.interfaceType);
+
+        Button accessButton = button(device.blocked ? "Unblock" : "Block", false);
+        accessButton.setTextColor(device.blocked ? GREEN : RED);
+        LinearLayout.LayoutParams accessParams = matchWrap();
+        accessParams.topMargin = dp(12);
+        accessParams.height = dp(44);
+        outer.addView(accessButton, accessParams);
+        boolean validMac = device.mac != null && device.mac.matches("(?i)[0-9a-f]{2}([:-][0-9a-f]{2}){5}");
+        accessButton.setEnabled(connected && !deviceActionRunning && !scanning && validMac);
+        accessButton.setOnClickListener(v -> confirmDeviceAction(device));
         return outer;
     }
 

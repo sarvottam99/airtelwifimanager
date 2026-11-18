@@ -33,7 +33,8 @@ final class SavedDevicesStore {
                         item.optString("ip", ""),
                         item.optString("mac", ""),
                         item.optBoolean("active", false),
-                        item.optString("interface", "")
+                        item.optString("interface", ""),
+                        item.optBoolean("blocked", false)
                 ));
             }
         } catch (Exception ignored) {
@@ -75,6 +76,7 @@ final class SavedDevicesStore {
                 item.put("mac", device.mac);
                 item.put("active", device.active);
                 item.put("interface", device.interfaceType);
+                item.put("blocked", device.blocked);
                 array.put(item);
             } catch (Exception ignored) {
                 // Ignore a malformed record but preserve the rest of the list.
@@ -82,6 +84,22 @@ final class SavedDevicesStore {
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit().putString(DEVICES, array.toString()).apply();
+    }
+
+    /** Update router-confirmed access state even when the device is currently offline. */
+    static synchronized List<RouterDevice> updateBlocked(Context context, String mac, boolean blocked) {
+        String target = mac == null ? "" : mac.trim().replace('-', ':').toLowerCase(java.util.Locale.ROOT);
+        List<RouterDevice> devices = load(context);
+        for (int i = 0; i < devices.size(); i++) {
+            RouterDevice device = devices.get(i);
+            String existing = device.mac.trim().replace('-', ':').toLowerCase(java.util.Locale.ROOT);
+            if (!target.isEmpty() && target.equals(existing)) {
+                devices.set(i, device.withBlocked(blocked));
+            }
+        }
+        sort(devices);
+        save(context, devices);
+        return devices;
     }
 
     private static void sort(List<RouterDevice> devices) {

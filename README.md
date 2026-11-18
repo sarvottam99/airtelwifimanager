@@ -1,6 +1,6 @@
 # Network Scanner Airtel XStream
 
-An independent, read-only Android companion for Airtel Xstream Fiber users with the Nokia G-2425G-A GPON router.
+An independent Android companion for Airtel Xstream Fiber users with the Nokia G-2425G-A GPON router.
 
 It reads connected-device information directly from the router, including actual device names rather than relying on MAC vendor identification.
 
@@ -16,6 +16,8 @@ It reads connected-device information directly from the router, including actual
 - Search by device name, IP, MAC or interface.
 - Router session reuse during refresh.
 - Automatic login using locally saved credentials.
+- Block and unblock internet access for individual devices using router Parental Control.
+- Blocked status is read back from the router and shown on device cards.
 
 ## Password storage
 
@@ -25,9 +27,9 @@ If Android Keystore is unavailable, it falls back to app-private storage. This f
 
 Credentials remain on the device. They are not uploaded to a cloud service.
 
-## Read-only access
+## Device access controls
 
-The app only reads the router's device inventory. It cannot block devices, change Wi-Fi settings or modify router configuration.
+Block and Unblock use the Nokia router's Parental Control interface. Blocking restricts internet access; it does not necessarily disconnect a device from Wi-Fi. The app asks for confirmation and checks the router's policy state after each change. Do not block the Android phone running the app, because it may lose access to the router.
 
 ## Compatibility
 
@@ -45,9 +47,10 @@ Firmware variations may affect compatibility.
 3. Enter your router IP, administrator username and password.
 4. The app saves credentials and attempts automatic login on subsequent launches.
 5. Use Scan to refresh active devices.
-6. Use All Saved Devices to see previously discovered devices and their status.
-7. Use Logout to return to the login screen.
-8. Use Forget Saved Credentials to remove locally stored credentials.
+6. Use Block or Unblock on a device card to change its internet access through Parental Control.
+7. Use All Saved Devices to see previously discovered devices and their status.
+8. Use Logout to return to the login screen.
+9. Use Forget Saved Credentials to remove locally stored credentials.
 
 The router administrator password may differ from your Wi-Fi password.
 
@@ -79,4 +82,4 @@ app/build/outputs/apk/debug/app-debug.apk
 
 https://github.com/surajnai567/airtel-router-api
 
-This app independently implements the read-only router device-list functionality.
+This app independently implements the router device-list and Parental Control functions in Java. See NOTICE.md for MIT license attribution.
