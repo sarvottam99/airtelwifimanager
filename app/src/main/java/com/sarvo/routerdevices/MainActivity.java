@@ -99,7 +99,7 @@ public final class MainActivity extends Activity {
         page.setPadding(dp(20), dp(18), dp(20), dp(28));
         scroll.addView(page);
 
-        TextView title = text("Router Devices", 29, TEXT, true);
+        TextView title = text("Network Scanner Airtel XStream", 29, TEXT, true);
         page.addView(title, matchWrap());
         TextView subtitle = text("Airtel Xstream Fiber  ·  Nokia G-2425G-A", 13, MUTED, false);
         subtitle.setPadding(0, dp(5), 0, dp(20));
