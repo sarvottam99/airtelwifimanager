@@ -79,7 +79,7 @@ public final class MainActivity extends Activity {
         activeUsername = saved.username == null ? "admin" : saved.username;
         activePassword = saved.password == null ? "" : saved.password;
 
-        if (saved.password != null && saved.autoLogin) {
+        if (saved.password != null) {
             showConnectingPanel("Reconnecting to your router…");
             startLogin(activeHost, activeUsername, activePassword, true);
         } else {
@@ -264,6 +264,16 @@ public final class MainActivity extends Activity {
         activeUsername = username;
         activePassword = password;
 
+        // Save credentials as soon as Login is pressed, before any router/network work.
+        // This also keeps them if the router page read fails after authentication.
+        String credentialSaveError = null;
+        try {
+            SecureCredentials.save(this, host, username, password);
+        } catch (Exception saveError) {
+            credentialSaveError = "Could not save the password securely on this phone.";
+        }
+        final String credentialSaveWarning = credentialSaveError;
+
         if (!automatic && loginButton != null) {
             loginButton.setEnabled(false);
             loginButton.setText("Connecting…");
@@ -281,15 +291,7 @@ public final class MainActivity extends Activity {
             RouterClient client = new RouterClient(host, username, password);
             try {
                 List<RouterDevice> devices = client.connectAndReadDevices();
-                String saveWarning = null;
-                try {
-                    // Credentials are always saved after a successful login, encrypted with Android Keystore.
-                    SecureCredentials.save(this, host, username, password);
-                } catch (Exception saveError) {
-                    saveWarning = "Could not save the password securely on this phone.";
-                }
                 List<RouterDevice> merged = SavedDevicesStore.merge(this, devices);
-                final String warning = saveWarning;
                 mainHandler.post(() -> {
                     routerClient = client;
                     connected = true;
@@ -297,8 +299,8 @@ public final class MainActivity extends Activity {
                     currentDevices.addAll(devices);
                     savedDevices = merged;
                     showSessionPanel();
-                    if (warning != null) {
-                        Toast.makeText(this, warning, Toast.LENGTH_LONG).show();
+                    if (credentialSaveWarning != null) {
+                        Toast.makeText(this, credentialSaveWarning, Toast.LENGTH_LONG).show();
                     }
                     updateSummaries();
                     renderDevices();
@@ -309,7 +311,9 @@ public final class MainActivity extends Activity {
                 mainHandler.post(() -> {
                     connected = false;
                     routerClient = null;
-                    loadLoginPanelAfterError(host, username, password, safeMessage(e));
+                    String error = safeMessage(e);
+                    if (credentialSaveWarning != null) error += "\n" + credentialSaveWarning;
+                    loadLoginPanelAfterError(host, username, password, error);
                     updateScanButton();
                 });
             }
@@ -352,8 +356,7 @@ public final class MainActivity extends Activity {
     }
 
     private void logout() {
-        // Explicit Logout disables automatic reconnect; encrypted credentials remain prefilled for next login.
-        SecureCredentials.setAutoLogin(this, false);
+        // Logout ends this in-app session. Saved credentials are retained, and the next app launch auto-connects.
         RouterClient oldClient = routerClient;
         routerClient = null;
         connected = false;
@@ -365,7 +368,7 @@ public final class MainActivity extends Activity {
         String host = saved.host == null ? "192.168.1.1" : saved.host;
         String username = saved.username == null ? "admin" : saved.username;
         String password = saved.password == null ? "" : saved.password;
-        showLoginPanel(host, username, password, "Logged out. Your credentials remain saved securely on this phone.");
+        showLoginPanel(host, username, password, "Logged out. Saved credentials will be used automatically next time you open the app.");
         updateScanButton();
 
         executor.execute(() -> {

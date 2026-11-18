@@ -30,13 +30,16 @@ final class SecureCredentials {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey(), new GCMParameterSpec(128, iv));
         byte[] encrypted = cipher.doFinal(password.getBytes(StandardCharsets.UTF_8));
-        prefs.edit()
+        boolean committed = prefs.edit()
                 .putString("host", host)
                 .putString("username", username)
                 .putString(PASSWORD_IV, Base64.encodeToString(iv, Base64.NO_WRAP))
                 .putString(PASSWORD_DATA, Base64.encodeToString(encrypted, Base64.NO_WRAP))
                 .putBoolean(AUTO_LOGIN, true)
-                .apply();
+                .commit();
+        if (!committed) {
+            throw new IllegalStateException("Android could not persist the encrypted router credentials.");
+        }
     }
 
     static Saved load(Context context) {
