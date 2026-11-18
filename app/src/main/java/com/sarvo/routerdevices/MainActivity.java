@@ -304,9 +304,6 @@ public final class MainActivity extends Activity {
                     currentDevices.addAll(devices);
                     savedDevices = merged;
                     showSessionPanel();
-                    if (credentialSaveWarning != null) {
-                        Toast.makeText(this, credentialSaveWarning, Toast.LENGTH_LONG).show();
-                    }
                     updateSummaries();
                     renderDevices();
                     updateScanButton();
