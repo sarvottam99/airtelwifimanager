@@ -5,7 +5,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="Network Scanner Airtel XStream"
+        android:label="Airtel Wifi Manager"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">

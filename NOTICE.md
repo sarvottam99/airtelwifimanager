@@ -1,10 +1,8 @@
-# Third-party protocol attribution
+# Airtel Wifi Manager — third-party protocol attribution
 
-The Nokia G-2425G-A login and Parental Control request flow in this application is based on the protocol documented by [surajnai567/airtel-router-api](https://github.com/surajnai567/airtel-router-api). The Android implementation is a Java port/adaptation for this application.
+The Nokia G-2425G-A login, device inventory and Parental Control request flows in Airtel Wifi Manager are based on the protocol documented by [surajnai567/airtel-router-api](https://github.com/surajnai567/airtel-router-api). The Android implementation is a Java port/adaptation for this application.
 
-Upstream project license:
-
-MIT License
+Upstream project license: MIT License
 
 Copyright (c) 2026 Suraj
 

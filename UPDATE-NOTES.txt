@@ -1,12 +1,9 @@
-Router Devices 1.1.0 update
+Airtel Wifi Manager 1.1.9
 
 Changes:
-- Save router admin credentials automatically after a successful login, encrypted with Android Keystore.
-- Automatically reconnect when the app opens, until the user explicitly logs out.
-- After successful login, hide the login form and show the connected state with a Logout button.
-- Logout returns to the login form, retains the encrypted credentials for prefill, and disables auto-reconnect.
-- The Scan action lists only devices marked Active by the router.
-- A separate All saved devices section retains device records across scans and shows Active/Inactive tags.
-- Reuse the router session between scans instead of logging in again on each refresh.
+- Renamed the application to Airtel Wifi Manager in the launcher and in-app header.
+- Updated the README, project metadata, workflow labels and release APK filename to match the new name.
+- Retained the existing application ID and signing configuration so this release can update the installed app without changing its package identity.
+- Includes the existing router device scanning and Parental Control Block/Unblock functionality.
 
-Apply this ZIP at the repository root. It contains only changed/new project files.
+Release tag: v1.1.9
