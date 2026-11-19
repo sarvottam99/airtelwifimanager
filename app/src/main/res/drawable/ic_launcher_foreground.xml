@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Wi-Fi signal -->
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFF"
+        android:strokeWidth="4.5" android:strokeLineCap="round"
+        android:pathData="M24,34 C40,20 68,20 84,34" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFF"
+        android:strokeWidth="4.5" android:strokeLineCap="round"
+        android:pathData="M34,44 C45,35 63,35 74,44" />
+    <path android:fillColor="#FFFFFF" android:pathData="M51,49a3,3 0,1 0,6 0a3,3 0,1 0,-6 0" />
+
+    <!-- Router antennas and body -->
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFF"
+        android:strokeWidth="4" android:strokeLineCap="round" android:pathData="M27,57 L24,45" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFF"
+        android:strokeWidth="4" android:strokeLineCap="round" android:pathData="M75,57 L78,45" />
+    <path android:fillColor="#FFFFFF" android:pathData="M18,54h56a7,7 0,0 1,7 7v16a7,7 0,0 1,-7 7h-56a7,7 0,0 1,-7 -7v-16a7,7 0,0 1,7 -7z" />
+    <path android:fillColor="#00C853" android:pathData="M27,68a3.2,3.2 0,1 0,6.4 0a3.2,3.2 0,1 0,-6.4 0" />
+    <path android:fillColor="#00C853" android:pathData="M39,68a3.2,3.2 0,1 0,6.4 0a3.2,3.2 0,1 0,-6.4 0" />
+    <path android:fillColor="#00C853" android:pathData="M51,68a3.2,3.2 0,1 0,6.4 0a3.2,3.2 0,1 0,-6.4 0" />
+
+    <!-- Connected-device panel -->
+    <path android:fillColor="#FFFFFF" android:pathData="M65,49h25a5,5 0,0 1,5 5v36a5,5 0,0 1,-5 5h-25a5,5 0,0 1,-5 -5v-36a5,5 0,0 1,5 -5z" />
+    <path android:fillColor="#59636D" android:pathData="M69,60h4v4h-4z M77,61h13v2h-13z M69,70h4v4h-4z M77,71h13v2h-13z" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#00C853"
+        android:strokeWidth="3.6" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M78,84 L82,88 L89,79" />
+</vector>

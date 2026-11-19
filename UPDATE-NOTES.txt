@@ -1,9 +1,7 @@
-Airtel Wifi Manager 1.1.9
+Airtel Wifi Manager 1.1.10
 
 Changes:
-- Renamed the application to Airtel Wifi Manager in the launcher and in-app header.
-- Updated the README, project metadata, workflow labels and release APK filename to match the new name.
-- Retained the existing application ID and signing configuration so this release can update the installed app without changing its package identity.
-- Includes the existing router device scanning and Parental Control Block/Unblock functionality.
-
-Release tag: v1.1.9
+- Added a new Airtel Wifi Manager launcher icon.
+- Added Android adaptive launcher icons for Android 8.0 and newer.
+- Added density-specific PNG launcher icons for older Android versions.
+- Preserved the existing package ID and release signing configuration.

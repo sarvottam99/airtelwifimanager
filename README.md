@@ -2,6 +2,8 @@
 
 An Android companion for managing devices connected to an Airtel Xstream Fiber connection through the Nokia G-2425G-A GPON router.
 
+![Airtel Wifi Manager app icon](assets/airtel-wifi-manager-icon.png)
+
 Airtel Wifi Manager reads the router's own device inventory, including reported device names, IP addresses, MAC addresses, connection types and active status.
 
 ## Features
@@ -16,6 +18,10 @@ Airtel Wifi Manager reads the router's own device inventory, including reported 
 - Save router credentials locally and reconnect automatically on app launch.
 - Block and unblock a device's internet access through the router's Parental Control interface.
 - Read the blocked state back from the router and show it on device cards.
+
+## App icon
+
+The launcher uses an adaptive icon on Android 8.0 and newer, plus density-specific PNG fallbacks for older Android versions. The full generated icon artwork is included at `assets/airtel-wifi-manager-icon.png`.
 
 ## Device access controls
 
